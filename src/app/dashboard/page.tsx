@@ -114,9 +114,9 @@ function ReadingSheet({user,si,bi,onClose}:{user:UserProfile;si:number;bi:number
             ))}
           </div>
           <div style={{display:'flex',justifyContent:'center',gap:8,marginBottom:8}}>
-            {[sm[1] as string, bm[2]].map((el,i)=>(
-              <span key={i} style={{padding:'4px 16px',borderRadius:20,fontSize:12,color:ec(el),border:`1px solid ${ec(el)}40`,background:`${ec(el)}18`}}>{el}</span>
-            ))}
+            {([sm[1], bm[2]]).map((el, i)=>(
+              <span key={i} style={{padding:'4px 16px',borderRadius:20,fontSize:12,color:ec(String(el)),border:`1px solid ${ec(String(el))}40`,background:`${ec(String(el))}18`}}>{String(el)}</span>
+))}
           </div>
           <div style={{fontFamily:'Cinzel,serif',fontSize:11,color:'var(--gold)',letterSpacing:'.12em',marginBottom:12}}>
             {tgName} · {tgEn}
