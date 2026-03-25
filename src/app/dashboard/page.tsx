@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  getDayPillar, STEMS, BRANCHES, STEM_META, BRANCH_META,
+  getDayPillar, getDayMasterSi,
+  STEMS, BRANCHES, STEM_META, BRANCH_META,
   getTenGodIndex, TG_NAMES, TG_EN, calcScore
 } from '@/lib/bazi'
 import { TG_READINGS, type Cell } from '@/lib/tg-readings'
@@ -28,15 +29,13 @@ export default function DashboardPage() {
 
   const sm = STEM_META[today.si]
   const bm = BRANCH_META[today.bi]
-
-  return (
     <main style={{maxWidth:480,margin:'0 auto',minHeight:'100svh',display:'flex',flexDirection:'column',position:'relative'}}>
       {/* Header */}
       <div style={{padding:'52px 20px 28px',textAlign:'center',borderBottom:'1px solid var(--border)',background:'linear-gradient(180deg,rgba(200,149,58,.05),transparent)'}}>
         <div style={{fontFamily:'Cinzel,serif',fontSize:9,letterSpacing:'.3em',color:'var(--gl)',textTransform:'uppercase',marginBottom:8}}>{dateStr}</div>
         <div style={{fontSize:24}}>Selamat datang, <span style={{color:'var(--gold)'}}>{user.name}</span></div>
         <div style={{marginTop:7,fontSize:13,color:'var(--dim)',fontStyle:'italic'}}>
-          {user.day_master||'甲 Yang Wood'} · Day Master · Kua {user.kua_number||1}
+          {(() => { const si = getDayMasterSi(user.birth_date); return `${STEMS[si]} ${STEM_META[si].element} Day Master · Kua ${user.kua_number||1}` })()}
         </div>
         <button onClick={()=>{localStorage.removeItem('bazi_user');router.push('/')}} style={{position:'absolute',top:16,right:16,background:'var(--s2)',border:'1px solid var(--border)',borderRadius:20,padding:'6px 14px',fontSize:11,color:'var(--dim)',cursor:'pointer',fontFamily:'Cinzel,serif',letterSpacing:'.1em'}}>
           Keluar
@@ -51,7 +50,7 @@ export default function DashboardPage() {
             <div style={{fontSize:30,marginBottom:9}}>🔮</div>
             <div style={{fontFamily:'Cinzel,serif',fontSize:16,letterSpacing:'.1em',color:'var(--gold)',display:'block'}}>BACA BAZI HARI INI</div>
             <div style={{fontSize:13,color:'var(--dim)',marginTop:4}}>
-              {STEMS[today.si]}{BRANCHES[today.bi]} · {sm[1] as string} / {bm[2]}
+              {STEMS[today.si]}{BRANCHES[today.bi]} · {sm.element} / {bm.element}
             </div>
           </div>
           <div style={{borderTop:'1px solid var(--border)',padding:'9px 18px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -74,19 +73,23 @@ function ReadingSheet({user,si,bi,onClose}:{user:UserProfile;si:number;bi:number
   const sm      = STEM_META[si]
   const bm      = BRANCH_META[bi]
 
-  // Personalise: get Day Master stem index from user data
-  const dmName  = user.day_master||'甲 Yang Wood'
-  const dmSi    = STEMS.findIndex(s => dmName.startsWith(s))
-  const tgIdx   = getTenGodIndex(dmSi >= 0 ? dmSi : 0, si)
+  // ── KEY FIX: Calculate Day Master from birth_date (not from day_master field)
+  // day_master field may be empty — birth_date is always present
+  const dmSi    = getDayMasterSi(user.birth_date)
+  const dmChar  = STEMS[dmSi]
+  const dmMeta  = STEM_META[dmSi]
+
+  // Ten God = relationship between user's DM and today's day stem
+  const tgIdx   = getTenGodIndex(dmSi, si)
   const tgName  = TG_NAMES[tgIdx]
   const tgEn    = TG_EN[tgIdx]
   const reading = TG_READINGS[tgName]
   const score   = calcScore(tgIdx, bi, user.lucky_elements||'', si)
 
   const elColor: Record<string,string> = {
-    Kayu:'#5ac85a',Api:'#e06040',Tanah:'#c89040',Logam:'#b0b0cc',Air:'#4898e0'
+    Kayu:'#5ac85a', Api:'#e06040', Tanah:'#c89040', Logam:'#b0b0cc', Air:'#4898e0'
   }
-  const ec = (el:string) => elColor[el]||'#c89040'
+  const ec = (el: string) => elColor[el] || '#c89040'
 
   return (
     <div style={{position:'fixed',inset:0,background:'var(--bg)',overflowY:'auto',zIndex:100,animation:'fadeUp .4s ease forwards'}}>
@@ -105,18 +108,21 @@ function ReadingSheet({user,si,bi,onClose}:{user:UserProfile;si:number;bi:number
         <div style={{background:'var(--surface)',border:'1px solid var(--b2)',borderRadius:22,padding:'26px 16px',textAlign:'center',position:'relative',overflow:'hidden',animation:'fadeUp .5s ease forwards'}}>
           <div style={{fontFamily:'Cinzel,serif',fontSize:9,letterSpacing:'.28em',color:'var(--dim)',textTransform:'uppercase',marginBottom:14}}>✦ &nbsp; PILAR HARI INI &nbsp; ✦</div>
           <div style={{display:'flex',justifyContent:'center',alignItems:'flex-end',gap:18,marginBottom:10}}>
-            {[{char:STEMS[si],lbl:`${sm[0]} · ${sm[1]}`},{char:BRANCHES[bi],lbl:`${bm[0]} · ${bm[1]}`}].map((p,i)=>(
+            {[
+              {char:STEMS[si], label:`${sm.romanization} · ${sm.element}`},
+              {char:BRANCHES[bi], label:`${bm.romanization} · ${bm.animal}`},
+            ].map((p,i)=>(
               <div key={i} style={{textAlign:'center'}}>
                 {i===1&&<div style={{fontSize:36,color:'var(--b2)',paddingBottom:14}}>·</div>}
                 <div style={{fontSize:66,lineHeight:1,background:'linear-gradient(180deg,#e8c060,#c8953a,#5a3808)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>{p.char}</div>
-                <div style={{fontSize:11,color:'var(--dim)',marginTop:4}}>{p.lbl}</div>
+                <div style={{fontSize:11,color:'var(--dim)',marginTop:4}}>{p.label}</div>
               </div>
             ))}
           </div>
           <div style={{display:'flex',justifyContent:'center',gap:8,marginBottom:8}}>
-            {([sm[1], bm[2]]).map((el, i)=>(
-              <span key={i} style={{padding:'4px 16px',borderRadius:20,fontSize:12,color:ec(String(el)),border:`1px solid ${ec(String(el))}40`,background:`${ec(String(el))}18`}}>{String(el)}</span>
-))}
+            {([sm.element, bm.element] as string[]).map((el,i)=>(
+              <span key={i} style={{padding:'4px 16px',borderRadius:20,fontSize:12,color:ec(el),border:`1px solid ${ec(el)}40`,background:`${ec(el)}18`}}>{el}</span>
+            ))}
           </div>
           <div style={{fontFamily:'Cinzel,serif',fontSize:11,color:'var(--gold)',letterSpacing:'.12em',marginBottom:12}}>
             {tgName} · {tgEn}
@@ -125,7 +131,9 @@ function ReadingSheet({user,si,bi,onClose}:{user:UserProfile;si:number;bi:number
             <>
               <div style={{fontSize:16,lineHeight:1.78,color:'var(--dim)',fontStyle:'italic',marginBottom:10}}>{reading.energy}</div>
               <div style={{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 14px',textAlign:'left',marginBottom:10}}>
-                <div style={{fontFamily:'Cinzel,serif',fontSize:8,letterSpacing:'.22em',color:'var(--gl)',textTransform:'uppercase',marginBottom:6}}>✦ Kesesuaian dengan Day Master {user.day_master?.split(' ')[0]||'甲'}</div>
+                <div style={{fontFamily:'Cinzel,serif',fontSize:8,letterSpacing:'.22em',color:'var(--gl)',textTransform:'uppercase',marginBottom:6}}>
+                  ✦ Kesesuaian dengan Day Master {dmChar} {dmMeta.element}
+                </div>
                 <p style={{fontSize:14,lineHeight:1.72,color:'var(--dim)',marginBottom:6}}><strong style={{color:'var(--teal)'}}>Harmoni:</strong> {reading.harmony}</p>
                 <p style={{fontSize:14,lineHeight:1.72,color:'var(--dim)'}}><strong style={{color:'var(--red)'}}>Konflik:</strong> {reading.conflict}</p>
               </div>
